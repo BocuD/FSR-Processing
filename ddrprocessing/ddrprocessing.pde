@@ -8,6 +8,7 @@ import processing.serial.*;
 
 Robot robot;
 ControlP5 cp5;
+ScrollableList list;
 
 Serial arduino;
 boolean buttonState[] = new boolean[4];
@@ -34,16 +35,14 @@ void setup() {
   cp5 = new ControlP5(this);
 
   printArray(Serial.list());
-  
+
   serialList = Serial.list();
 
   List l = Arrays.asList(serialList);
 
-  
-
-  cp5.addScrollableList("serialList")
+  list = cp5.addScrollableList("serialList")
     .setCaptionLabel("Select serial port")
-    .setPosition(0, 0)
+    .setPosition(0, 20)
     .setSize(100, 100)
     .setBarHeight(20)
     .setItemHeight(20)
@@ -68,10 +67,13 @@ void setup() {
   cp5.addButton("Auto")
     .setPosition(250, 270)
     .setSize(50, 19);
+  cp5.addButton("Refresh")
+    .setPosition(0, 0)
+    .setSize(100, 19);
 }
 
 void serialList(int n) {
-  if(arduino != null) {
+  if (arduino != null) {
     arduino.write("q\n");
     arduino.stop();
   }
@@ -86,8 +88,8 @@ int rate = 0;
 
 void draw() {
   background(0);
-  
-  if(arduino == null) return;
+
+  if (arduino == null) return;
 
   if (init) {
     arduino.write("s\n");
@@ -151,7 +153,7 @@ void draw() {
     stroke(255);
   }
 
-  text(rate + "hz", 10, 30);
+  text("Polling rate: " + rate + "hz", 10, 50);
 
   //right
   if (buttonState[0]) {
@@ -305,4 +307,12 @@ void Auto() {
     Config();
 
   auto = true;
+}
+
+void Refresh() {
+  serialList = Serial.list();
+
+  List l = Arrays.asList(serialList);
+  
+  list.setItems(l);
 }
