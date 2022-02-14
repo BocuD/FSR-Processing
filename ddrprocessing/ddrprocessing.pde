@@ -77,8 +77,13 @@ void serialList(int n) {
     arduino.write("q\n");
     arduino.stop();
   }
-  arduino = new Serial(this, serialList[n], 115200);
-  init = true;
+  try {
+    arduino = new Serial(this, serialList[n], 115200);
+    init = true;
+  }
+  catch(Exception e) {
+    
+  }
 }
 
 int lastMillis = 0;
@@ -313,6 +318,6 @@ void Refresh() {
   serialList = Serial.list();
 
   List l = Arrays.asList(serialList);
-  
+
   list.setItems(l);
 }

@@ -100,8 +100,13 @@ public void serialList(int n) {
     arduino.write("q\n");
     arduino.stop();
   }
-  arduino = new Serial(this, serialList[n], 115200);
-  init = true;
+  try {
+    arduino = new Serial(this, serialList[n], 115200);
+    init = true;
+  }
+  catch(Exception e) {
+    
+  }
 }
 
 int lastMillis = 0;
@@ -336,9 +341,10 @@ public void Refresh() {
   serialList = Serial.list();
 
   List l = Arrays.asList(serialList);
-  
+
   list.setItems(l);
 }
+
   public void settings() {  size(320, 300); }
   static public void main(String[] passedArgs) {
     String[] appletArgs = new String[] { "ddrprocessing" };
