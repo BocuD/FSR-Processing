@@ -14,16 +14,19 @@ Serial arduino;
 boolean buttonState[] = new boolean[4];
 int buttonDebug[] = new int[4];
 int buttonOffset[] = new int[4];
+int buttonMapping[] = new int[4];
 
 int keys[] = { KeyEvent.VK_RIGHT, KeyEvent.VK_LEFT, KeyEvent.VK_UP, KeyEvent.VK_DOWN };
+
 String keyNames[] = { "right", "left", "up", "down" };
 
 boolean config = false;
-boolean wasConfig = false;
-boolean auto = false;
 
 int autoCount = 0;
 boolean init = true;
+
+int remapStep = 0;
+int lastPort = -1;
 
 String[] serialList;
 
@@ -61,12 +64,19 @@ void setup() {
   buttonState[2] = false;
   buttonState[3] = false;
 
+  cp5.addButton("Remap")
+    .setPosition(250, 220)
+    .setSize(50, 19);
   cp5.addButton("Config")
-    .setPosition(250, 250)
+    .setPosition(250, 240)
     .setSize(50, 19);
   cp5.addButton("Auto")
-    .setPosition(250, 270)
+    .setPosition(250, 260)
     .setSize(50, 19);
+  cp5.addButton("Reset")
+    .setPosition(250, 280)
+    .setSize(50, 19);
+    
   cp5.addButton("Refresh")
     .setPosition(0, 0)
     .setSize(100, 19);
@@ -82,7 +92,6 @@ void serialList(int n) {
     init = true;
   }
   catch(Exception e) {
-    
   }
 }
 
@@ -104,6 +113,15 @@ void draw() {
     rate = count;
     count = 0;
     lastMillis = millis();
+  }
+
+  text("Polling rate: " + rate + "hz", 10, 50);
+
+  if (remap) {
+    textAlign(CENTER);
+    text("Please step on the panel for " + keyNames[remapStep], 150, 150);
+    textAlign(LEFT);
+    return;
   }
 
   if (config) {
@@ -157,8 +175,6 @@ void draw() {
     line(200, 300 - buttonOffset[3]/10, 220, 300 - buttonOffset[3]/10);
     stroke(255);
   }
-
-  text("Polling rate: " + rate + "hz", 10, 50);
 
   //right
   if (buttonState[0]) {
@@ -232,7 +248,7 @@ void processString(String input) {
             arduino.write("o\n");
             arduino.write(Integer.toString(i));
             arduino.write("\n");
-            buttonOffset[i] = buttonDebug[i] + 150;
+            buttonOffset[i] = buttonDebug[i] + 200;
             arduino.write(Integer.toString(buttonOffset[i]));
             arduino.write("\n");
           }
@@ -242,6 +258,33 @@ void processString(String input) {
 
           if (!wasConfig)
             Config();
+        }
+      } 
+      else if (remap) 
+      {
+        for (int i = 0; i < 4; i++) {
+          if (buttonDebug[i] > buttonOffset[i] && i != lastPort) {
+            buttonMapping[remapStep] = i;
+            lastPort = i;
+            remapStep++;
+            println(remapStep);
+            if (remapStep > 3)
+            {
+              remap = false;
+
+              for (int j = 0; j < 4; j++) {
+                arduino.write("m\n");
+                arduino.write(Integer.toString(j));
+                arduino.write("\n");
+                arduino.write(Integer.toString(buttonMapping[j]));
+                arduino.write("\n");
+              }
+
+              if (!wasConfig) 
+                Config();
+            }
+            break;
+          }
         }
       }
     }
@@ -288,6 +331,8 @@ void exit() {
 }
 
 void Config() {
+  if(arduino == null) return;
+
   config = !config;
 
   //exiting config
@@ -305,7 +350,11 @@ void Config() {
   arduino.write("d\n");
 }
 
+boolean wasConfig = false;
+boolean auto = false;
 void Auto() {
+  if(arduino == null) return;
+  
   wasConfig = config;
 
   if (!config)
@@ -320,4 +369,26 @@ void Refresh() {
   List l = Arrays.asList(serialList);
 
   list.setItems(l);
+}
+
+boolean remap = false;
+void Remap() {
+  if(arduino == null) return;
+
+  if (!remap) {
+    wasConfig = config;
+
+    if (!config)
+      Config();
+
+    remap = true;
+    remapStep = 0;
+    lastPort = -1;
+  }
+}
+
+void Reset() {
+  if(arduino == null) return;
+    
+  arduino.write("r\n");
 }
