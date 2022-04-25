@@ -1,10 +1,19 @@
+#include <FastLED.h>
 #include <Joystick.h>
 #include <EEPROM.h>
 
+#define NUM_LEDS PANEL_LED_COUNT*4
+#define LED_PIN 3
+#define PANEL_LED_COUNT 19
+
+CRGB leds[NUM_LEDS];
+
 Joystick_ joystick;
 
+bool lastState[] = {false, false, false, false};
 int threshHold[] = {550, 400, 300, 450};
 int mapping[] = {0, 1, 2, 3};
+int ledMapping[] = {0, 1, 2, 3};
 bool debug = false;
 
 enum mode {
@@ -25,6 +34,9 @@ void setup() {
 
   readOffsets();
   readMapping();
+
+  FastLED.addLeds<WS2812, LED_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.setBrightness(60);
 }
 
 void loop() {
@@ -57,38 +69,15 @@ void loop() {
   }
 }
 
-void animation() {
-  digitalWrite(2, LOW);
-  digitalWrite(3, LOW);
-  digitalWrite(4, LOW);
-  digitalWrite(5, LOW);
-
-  digitalWrite(2, HIGH);
-  delay(100);
-  digitalWrite(2, LOW);
-  
-  digitalWrite(4, HIGH);
-  delay(100);
-  digitalWrite(4, LOW);
-  
-  digitalWrite(5, HIGH);
-  delay(100);
-  digitalWrite(5, LOW);
-  
-  digitalWrite(3, HIGH);
-  delay(100);
-  digitalWrite(3, LOW);
-}
-
 int b0, b1, b2, b3;
 void sendStatusPacket() {
   b0 = readPad(0);
   b1 = readPad(1);
   b2 = readPad(2);
   b3 = readPad(3);
-  
+
   byte out = ((b3 << 3) | (b2 << 2) | (b1 << 1) | b0);
-  
+
   Serial.write(out);
   Serial.write('\n');
 
@@ -114,11 +103,17 @@ void sendStatusPacketUSB() {
 
 bool readPad(int port) {
   if (analogRead(mapping[port]) > threshHold[port]) {
-    digitalWrite(port + 2, HIGH);
+    if (!lastState[mapping[port]]) {
+      //setLedOn(ledMapping[port]);
+      lastState[mapping[port]] = true;
+    }
     return true;
   }
 
-  digitalWrite(port + 2, LOW);
+  if (lastState[mapping[port]]) {
+    //setLedOff(ledMapping[port]);
+    lastState[mapping[port]] = false;
+  }
   return false;
 }
 
@@ -172,10 +167,19 @@ void readCommands() {
 
           Serial.println();
 
-          Serial.println("/current mappings: ");
+          Serial.println("/current sensor mappings: ");
 
           for (int i = 0; i < 4; i++) {
             Serial.print(mapping[i]);
+            Serial.print("|");
+          }
+
+          Serial.println();
+
+          Serial.println("/current led mappings: ");
+
+          for (int i = 0; i < 4; i++) {
+            Serial.print(ledMapping[i]);
             Serial.print("|");
           }
 
@@ -243,9 +247,9 @@ void readCommands() {
 
           Serial.print("/adjust mapping: selected index: ");
           Serial.print(index);
-          Serial.print("; current port: ");
+          Serial.print("; current sensor port: ");
           Serial.println(mapping[index]);
-          Serial.println("/adjust mapping: please specify new port");
+          Serial.println("/adjust mapping: please specify new sensor port");
 
           number = "";
           c = '0';
@@ -259,8 +263,29 @@ void readCommands() {
 
           mapping[index] = number.toInt();
 
-          Serial.print("/adjust mapping: selected port: ");
+          Serial.print("/adjust mapping: selected sensor port: ");
           Serial.println(mapping[index]);
+
+          Serial.print("/adjust mapping: selected index: ");
+          Serial.print(index);
+          Serial.print("; current led port: ");
+          Serial.println(ledMapping[index]);
+          Serial.println("/adjust mapping: please specify new led port");
+
+          number = "";
+          c = '0';
+
+          while (c != '\n') {
+            if (Serial.available() > 0) {
+              c = Serial.read();
+              number += c;
+            }
+          }
+
+          ledMapping[index] = number.toInt();
+
+          Serial.print("/adjust mapping: selected led port: ");
+          Serial.println(ledMapping[index]);
           writeMapping();
         }
         break;
@@ -303,7 +328,11 @@ void readOffsets() {
 
 void readMapping() {
   for (int i = 4; i < 8; i++) {
-    mapping[i-4] = EEPROM.read(i);
+    mapping[i - 4] = EEPROM.read(i);
+  }
+
+  for (int i = 8; i < 12; i++) {
+    ledMapping[i - 8] = EEPROM.read(i);
   }
 }
 
@@ -315,7 +344,11 @@ void writeOffsets() {
 
 void writeMapping() {
   for (int i = 4; i < 8; i++) {
-    EEPROM.write(i, mapping[i-4]);
+    EEPROM.write(i, mapping[i - 4]);
+  }
+
+  for (int i = 8; i < 12; i++) {
+    EEPROM.write(i, ledMapping[i - 8]);
   }
 }
 
@@ -329,8 +362,22 @@ void resetOffsets() {
 
 void resetMapping() {
   for (int i = 4; i < 8; i++) {
-    EEPROM.write(i, i-4);
+    EEPROM.write(i, i - 4);
   }
 
   readMapping();
+}
+
+void setLedOn(int port) {
+  for (int i = port * PANEL_LED_COUNT; i < port * PANEL_LED_COUNT + PANEL_LED_COUNT; i++) {
+    leds[i] = CRGB::White;
+  }
+  FastLED.show();
+}
+
+void setLedOff(int port) {
+  for (int i = port * PANEL_LED_COUNT; i < port * PANEL_LED_COUNT + PANEL_LED_COUNT; i++) {
+    leds[i] = CRGB::Black;
+  }
+  FastLED.show();
 }
