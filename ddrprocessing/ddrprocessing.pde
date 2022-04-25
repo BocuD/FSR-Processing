@@ -16,6 +16,8 @@ int buttonDebug[] = new int[4];
 int buttonOffset[] = new int[4];
 int buttonMapping[] = new int[4];
 
+int auto_offset = 150;
+
 int keys[] = { KeyEvent.VK_RIGHT, KeyEvent.VK_LEFT, KeyEvent.VK_UP, KeyEvent.VK_DOWN };
 
 String keyNames[] = { "right", "left", "up", "down" };
@@ -248,7 +250,7 @@ void processString(String input) {
             arduino.write("o\n");
             arduino.write(Integer.toString(i));
             arduino.write("\n");
-            buttonOffset[i] = buttonDebug[i] + 200;
+            buttonOffset[i] = buttonDebug[i] + auto_offset;
             arduino.write(Integer.toString(buttonOffset[i]));
             arduino.write("\n");
           }
